@@ -1,6 +1,5 @@
 package main
 
-import fmt 		"core:fmt"
 import slice	"core:slice"
 import rl		"vendor:raylib"
 import time		"core:time"
@@ -12,6 +11,8 @@ Y_MARGIN		:: 100
 CANVAS_WIDTH	:: SCR_WIDTH - 2 * X_MARGIN
 CANVAS_HEIGHT	:: SCR_HEIGHT - 2 * Y_MARGIN
 NUM_POINTS		:: 10000
+
+// TODO(matthew): add opts
 
 main :: proc()
 {
@@ -60,17 +61,7 @@ main :: proc()
 // Graphics
 //////////////////////////////////////
 
-CoordToPixel :: proc(Coord : v2) -> v2i
-{
-	Pixel := v2i {
-		i32(Coord.x * CANVAS_WIDTH) + X_MARGIN,
-		i32((1 - Coord.y) * CANVAS_HEIGHT) + Y_MARGIN,
-	}
-
-	return Pixel
-}
-
-CoordToPixel2 :: proc(Coord : v2) -> v2
+CoordToPixel :: proc(Coord : v2) -> v2
 {
 	Pixel := v2 {
 		Coord.x * CANVAS_WIDTH + X_MARGIN,
@@ -104,7 +95,7 @@ DrawPoints :: proc(Points : []v2)
 	for Point in Points
 	{
 		Center := CoordToPixel(Point)
-		rl.DrawCircle(Center.x, Center.y, 5.0, rl.YELLOW)
+		rl.DrawCircle(i32(Center.x), i32(Center.y), 5.0, rl.YELLOW)
 	}
 }
 
@@ -151,35 +142,26 @@ DrawHyperplanes :: proc(Tree : kd_tree, NodeIndex : int, Depth, MaxDepth : int, 
 	Start[Axis] = SplitPos
 	End[Axis] = SplitPos
 
-	StartPixel := CoordToPixel2(Start)
-	EndPixel := CoordToPixel2(End)
+	StartPixel := CoordToPixel(Start)
+	EndPixel := CoordToPixel(End)
 
-	// rl.DrawLine(StartPixel.x, StartPixel.y, EndPixel.x, EndPixel.y, Color)
 	rl.DrawLineEx(StartPixel, EndPixel, 2.0, Color)
 
-	// Recurse down through children
+	// Recurse down left children
 	{
 		NewMax := MaxCoord
 		NewMax[Axis] = SplitPos
 
 		DrawHyperplanes(Tree, Node.LeftChildIndex, Depth + 1, MaxDepth, MinCoord, NewMax)
 	}
+
+	// Recurse down right children
 	{
 		NewMin := MinCoord
 		NewMin[Axis] = SplitPos
 
 		DrawHyperplanes(Tree, Node.RightChildIndex, Depth + 1, MaxDepth, NewMin, MaxCoord)
 	}
-}
-
-PaintRectangle :: proc(MinCoord, MaxCoord : v2, Color : rl.Color)
-{
-	Width  := i32((MaxCoord.x - MinCoord.x) * CANVAS_WIDTH)
-	Height := i32((MaxCoord.y - MinCoord.y) * CANVAS_HEIGHT)
-
-	Pos := CoordToPixel(v2{MinCoord.x, MaxCoord.y})
-
-	rl.DrawRectangle(Pos.x, Pos.y, Width, Height, Color)
 }
 
 //////////////////////////////////////
@@ -268,21 +250,6 @@ BuildNode :: proc(Tree : ^kd_tree, Indices : []int, Axis : int, Depth : int)
 	}
 }
 
-TraverseTree :: proc(Tree : kd_tree, NodeIndex : int)
-{
-	if NodeIndex == -1 || NodeIndex >= len(Tree.Nodes)
-	{
-		return
-	}
-
-	Node := Tree.Nodes[NodeIndex]
-
-	fmt.println(Node.Axis, Node.SplitPos)
-
-	TraverseTree(Tree, Node.LeftChildIndex)
-	TraverseTree(Tree, Node.RightChildIndex)
-}
-
 //////////////////////////////////////
 // Spatial sorts
 //////////////////////////////////////
@@ -304,116 +271,4 @@ SortByY :: proc(Index1, Index2 : int) -> bool
 }
 
 SortByAxis : []proc(int, int)->bool = { SortByX, SortByY, }
-
-//////////////////////////////////////
-// Deprecated
-//////////////////////////////////////
-
-/*
-
-DrawHyperplanes :: proc(Tree : kd_tree, NodeIndex : int, MinCoord, MaxCoord : v2)
-{
-	if (NodeIndex == -1) || (NodeIndex >= len(Tree.Nodes))
-	{
-		return
-	}
-
-	Node := Tree.Nodes[NodeIndex]
-
-	Start, End : v2
-	NewMinCoord, NewMaxCoord : v2
-	Color : rl.Color
-
-	if Node.Axis == 0
-	{
-		Start.x = Node.SplitPos
-		Start.y = MinCoord.y
-		End.x = Node.SplitPos
-		End.y = MaxCoord.y
-
-		Color = rl.RED
-	}
-	else
-	{
-		Start.x = MinCoord.x
-		Start.y = Node.SplitPos
-
-		End.x = MaxCoord.x
-		End.y = Node.SplitPos
-
-		Color = rl.GREEN
-	}
-
-	StartPixel := CoordToPixel(Start)
-	EndPixel := CoordToPixel(End)
-
-	rl.DrawLine(StartPixel.x, StartPixel.y, EndPixel.x, EndPixel.y, Color)
-
-	// Recurse down through children
-	{
-		NewMax := MaxCoord
-		NewMax[Node.Axis] = Node.SplitPos
-		DrawHyperplanes(Tree, Node.LeftChildIndex, MinCoord, NewMax)
-	}
-	{
-		NewMin := MinCoord
-		NewMin[Node.Axis] = Node.SplitPos
-		DrawHyperplanes(Tree, Node.RightChildIndex, NewMin, MaxCoord)
-	}
-}
-
-DrawHyperplanes2 :: proc(Tree : kd_tree, NodeIndex : int, MaxDepth : int, MinCoord, MaxCoord : v2)
-{
-	if MaxDepth == 0
-	{
-		return
-	}
-
-	if (NodeIndex == -1) || (NodeIndex >= len(Tree.Nodes))
-	{
-		return
-	}
-
-	Node := Tree.Nodes[NodeIndex]
-	Axis := Node.Axis
-	SplitPos := Node.SplitPos
-
-	Color : rl.Color = rl.GREEN
-
-	Start := MinCoord
-	End := MaxCoord
-	Start[Axis] = SplitPos
-	End[Axis] = SplitPos
-
-	if Axis == 0
-	{
-		Color = rl.RED
-	}
-	else
-	{
-		Color = rl.GREEN
-	}
-
-	StartPixel := CoordToPixel2(Start)
-	EndPixel := CoordToPixel2(End)
-
-	// rl.DrawLine(StartPixel.x, StartPixel.y, EndPixel.x, EndPixel.y, Color)
-	rl.DrawLineEx(StartPixel, EndPixel, 2.0, Color)
-
-	// Recurse down through children
-	{
-		NewMax := MaxCoord
-		NewMax[Axis] = SplitPos
-
-		DrawHyperplanes2(Tree, Node.LeftChildIndex, MaxDepth - 1, MinCoord, NewMax)
-	}
-	{
-		NewMin := MinCoord
-		NewMin[Axis] = SplitPos
-
-		DrawHyperplanes2(Tree, Node.RightChildIndex, MaxDepth - 1, NewMin, MaxCoord)
-	}
-}
-
-*/
 
