@@ -46,9 +46,13 @@ main :: proc()
 
     for I in 0..<NumPoints
     {
-        X := RandomReal(&Series, 0.01, 0.99)
-        Y := RandomReal(&Series, 0.01, 0.99)
-        append(&Tree.Points, v2{X, Y})
+        // X := RandomReal(&Series, 0.01, 0.99)
+        // Y := RandomReal(&Series, 0.01, 0.99)
+        // append(&Tree.Points, v2{X, Y})
+		R := SquareRoot(RandomReal(&Series)) / 2
+		Theta := RandomReal(&Series, 0, 2 * PI)
+		P := R * v2{Cos(Theta), Sin(Theta)} + v2{0.5, 0.5}
+		append(&Tree.Points, P)
     }
 
     BuildTree(&Tree)
@@ -83,11 +87,11 @@ main :: proc()
 
         DrawHyperplanes(Tree, 0, 0, MaxDepth, v2{0, 0}, v2{1, 1})
 
-        // if rl.IsKeyPressed(.SPACE)
-        // {
+        if rl.IsKeyPressed(.SPACE)
+        {
             MaxDepth = (MaxDepth + 1) % (Tree.MaxDepth + 1)
-        // }
-        time.sleep(SleepDuration)
+        }
+        // time.sleep(SleepDuration)
 
         DrawBorder()
 

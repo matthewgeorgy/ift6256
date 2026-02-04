@@ -4,5 +4,5 @@ if not exist build (
 	mkdir build
 )
 
-odin build source -out:build\main.exe -debug
+odin build source -out:build\main.exe -o:minimal
 
