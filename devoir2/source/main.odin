@@ -25,6 +25,7 @@ opts :: struct
                           - 0: uniform square [default]
                           - 1: uniform circle
                           - 2: non-uniform circle"`,
+    animate : bool`usage:"Animate kd-tree construction [default: false]"`,
 }
 
 main :: proc()
@@ -105,11 +106,18 @@ main :: proc()
 
         DrawHyperplanes(Tree, 0, 0, MaxDepth, v2{0, 0}, v2{1, 1})
 
-        // if rl.IsKeyPressed(.SPACE)
-        // {
+        if Opts.animate
+        {
             MaxDepth = (MaxDepth + 1) % (Tree.MaxDepth + 1)
-        // }
-        time.sleep(SleepDuration)
+            time.sleep(SleepDuration)
+        }
+        else
+        {
+            if rl.IsKeyPressed(.SPACE)
+            {
+                MaxDepth = (MaxDepth + 1) % (Tree.MaxDepth + 1)
+            }
+        }
 
         DrawBorder()
 
