@@ -15,12 +15,16 @@ X_MARGIN            :: SCR_WIDTH * X_MARGIN_PERCENT
 Y_MARGIN            :: SCR_HEIGHT * Y_MARGIN_PERCENT
 CANVAS_WIDTH        :: SCR_WIDTH - 2 * X_MARGIN
 CANVAS_HEIGHT       :: SCR_HEIGHT - 2 * Y_MARGIN
-NUM_POINTS          :: 1000
+DEFAULT_NUM_POINTS  :: 1000
 
 opts :: struct
 {
-    seed : uint `usage:"Initial seed [default: 0, random seed each time]"`,
+    seed : u32 `usage:"Initial seed [default: 0, random seed each time]"`,
     n : uint `usage:"Number of points to generate [default: 1000]"`,
+    sampler : uint`usage:"Sampling strategy:
+                          - 0: uniform square [default]
+                          - 1: uniform circle
+                          - 2: non-uniform circle"`,
 }
 
 main :: proc()
@@ -32,8 +36,8 @@ main :: proc()
 
     flags.parse_or_exit(&Opts, os.args, .Odin)
 
-    Seed := (Opts.seed != 0) ? u32(Opts.seed) : u32(GetEntropy())
-    NumPoints := (Opts.n != 0) ? Opts.n : NUM_POINTS
+    Seed : u32 = (Opts.seed != 0) ? Opts.seed : GetEntropy()
+    NumPoints := (Opts.n != 0) ? Opts.n : DEFAULT_NUM_POINTS
 
     fmt.println("Seed:", Seed)
     fmt.println("NumPoints:", NumPoints)
@@ -46,13 +50,27 @@ main :: proc()
 
     for I in 0..<NumPoints
     {
-        // X := RandomReal(&Series, 0.01, 0.99)
-        // Y := RandomReal(&Series, 0.01, 0.99)
-        // append(&Tree.Points, v2{X, Y})
-		R := SquareRoot(RandomReal(&Series)) / 2
-		Theta := RandomReal(&Series, 0, 2 * PI)
-		P := R * v2{Cos(Theta), Sin(Theta)} + v2{0.5, 0.5}
-		append(&Tree.Points, P)
+        P : v2
+
+        if Opts.sampler == 0
+        {
+            P.x = RandomReal(&Series, 0.01, 0.99)
+            P.y = RandomReal(&Series, 0.01, 0.99)
+        }
+        else if Opts.sampler == 1
+        {
+            R := SquareRoot(RandomReal(&Series)) / 2
+            Theta := RandomReal(&Series, 0, 2 * PI)
+            P = R * v2{Cos(Theta), Sin(Theta)} + v2{0.5, 0.5}
+        }
+        else if Opts.sampler == 2
+        {
+            R := RandomReal(&Series) / 2
+            Theta := RandomReal(&Series, 0, 2 * PI)
+            P = R * v2{Cos(Theta), Sin(Theta)} + v2{0.5, 0.5}
+        }
+
+        append(&Tree.Points, P)
     }
 
     BuildTree(&Tree)
@@ -68,30 +86,30 @@ main :: proc()
 
     MaxDepth : int = 1
 
-	ShowPoints : bool = false
+    ShowPoints : bool = false
 
     for !rl.WindowShouldClose()
     {
         rl.BeginDrawing()
         rl.ClearBackground(rl.BLACK)
 
-		if rl.IsKeyPressed(.P)
-		{
-			ShowPoints = !ShowPoints
-		}
+        if rl.IsKeyPressed(.P)
+        {
+            ShowPoints = !ShowPoints
+        }
 
-		if ShowPoints
-		{
-        	DrawPoints(Tree.Points[:])
-		}
+        if ShowPoints
+        {
+            DrawPoints(Tree.Points[:])
+        }
 
         DrawHyperplanes(Tree, 0, 0, MaxDepth, v2{0, 0}, v2{1, 1})
 
-        if rl.IsKeyPressed(.SPACE)
-        {
+        // if rl.IsKeyPressed(.SPACE)
+        // {
             MaxDepth = (MaxDepth + 1) % (Tree.MaxDepth + 1)
-        }
-        // time.sleep(SleepDuration)
+        // }
+        time.sleep(SleepDuration)
 
         DrawBorder()
 
@@ -189,16 +207,16 @@ DrawHyperplanes :: proc(Tree : kd_tree, NodeIndex : int, Depth, MaxDepth : int, 
     StartPixel := CoordToPixel(Start)
     EndPixel := CoordToPixel(End)
 
-	if Axis == 0
-	{
-		StartPixel.y -= 1
-		EndPixel.y += 1
-	}
-	else
-	{
-		StartPixel.x += 1
-		EndPixel.x -= 1
-	}
+    if Axis == 0
+    {
+        StartPixel.y -= 1
+        EndPixel.y += 1
+    }
+    else
+    {
+        StartPixel.x += 1
+        EndPixel.x -= 1
+    }
 
     rl.DrawLineEx(StartPixel, EndPixel, 2.0, Color)
 
@@ -225,10 +243,10 @@ DrawHyperplanes :: proc(Tree : kd_tree, NodeIndex : int, Depth, MaxDepth : int, 
 
 kd_node :: struct
 {
-    Axis : int, // 0=x, 1=y
-    SplitPos : real,
-    Index : int,
-    LeftChildIndex, RightChildIndex : int
+    Axis : int, // Split axis (0=x, 1=y)
+    SplitPos : real, // Position of the split along the axis
+    Index : int, // Index into the Points array
+    LeftChildIndex, RightChildIndex : int // Child indices in the Nodes array
 }
 
 kd_tree :: struct
@@ -311,16 +329,14 @@ BuildNode :: proc(Tree : ^kd_tree, Indices : []int, Axis : int, Depth : int)
 
 SortByX :: proc(Index1, Index2 : int) -> bool
 {
-    Ptr := context.user_ptr
-    Tree := (cast(^kd_tree)Ptr)^
+    Tree := (cast(^kd_tree)context.user_ptr)^
 
     return Tree.Points[Index1].x < Tree.Points[Index2].x
 }
 
 SortByY :: proc(Index1, Index2 : int) -> bool
 {
-    Ptr := context.user_ptr
-    Tree := (cast(^kd_tree)Ptr)^
+    Tree := (cast(^kd_tree)context.user_ptr)^
 
     return Tree.Points[Index1].y < Tree.Points[Index2].y
 }
