@@ -71,8 +71,6 @@ main :: proc()
         rl.BeginDrawing()
         rl.ClearBackground(rl.BLACK)
 
-        DrawBorder()
-
 		if rl.IsKeyPressed(.P)
 		{
 			ShowPoints = !ShowPoints
@@ -90,6 +88,8 @@ main :: proc()
             MaxDepth = (MaxDepth + 1) % (Tree.MaxDepth + 1)
         // }
         time.sleep(SleepDuration)
+
+        DrawBorder()
 
         rl.EndDrawing()
     }
@@ -184,6 +184,17 @@ DrawHyperplanes :: proc(Tree : kd_tree, NodeIndex : int, Depth, MaxDepth : int, 
 
     StartPixel := CoordToPixel(Start)
     EndPixel := CoordToPixel(End)
+
+	if Axis == 0
+	{
+		StartPixel.y -= 1
+		EndPixel.y += 1
+	}
+	else
+	{
+		StartPixel.x += 1
+		EndPixel.x -= 1
+	}
 
     rl.DrawLineEx(StartPixel, EndPixel, 2.0, Color)
 
