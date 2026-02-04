@@ -1,5 +1,7 @@
 package main
 
+import win32 "core:sys/windows"
+
 /*
 	JSF PRNG (32-bit version), see the following:
 	- https://burtleburtle.net/bob/rand/smallprng.html
@@ -26,6 +28,15 @@ InitializeRandomSeries :: proc(Seed : u32) -> random_series
 	}
 
 	return Series
+}
+
+GetEntropy :: proc() -> u32
+{
+	Seed : u32
+
+	win32.BCryptGenRandom(nil, cast(^u8)&Seed, size_of(Seed), win32.BCRYPT_USE_SYSTEM_PREFERRED_RNG)
+
+	return Seed
 }
 
 Rotate32 :: proc(V : u32, Shift : u32) -> u32
