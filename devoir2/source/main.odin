@@ -56,7 +56,7 @@ main :: proc()
     ///////////////////////////////////////////////////////////////////////////
     // Render
 
-    SleepDuration : time.Duration = 5e8
+    SleepDuration : time.Duration = 1e8
 
     rl.SetTraceLogLevel(.NONE)
     rl.InitWindow(SCR_WIDTH, SCR_HEIGHT, "kd")
@@ -64,13 +64,24 @@ main :: proc()
 
     MaxDepth : int = 1
 
+	ShowPoints : bool = false
+
     for !rl.WindowShouldClose()
     {
         rl.BeginDrawing()
         rl.ClearBackground(rl.BLACK)
 
         DrawBorder()
-        // DrawPoints(Tree.Points[:])
+
+		if rl.IsKeyPressed(.P)
+		{
+			ShowPoints = !ShowPoints
+		}
+
+		if ShowPoints
+		{
+        	DrawPoints(Tree.Points[:])
+		}
 
         DrawHyperplanes(Tree, 0, 0, MaxDepth, v2{0, 0}, v2{1, 1})
 
