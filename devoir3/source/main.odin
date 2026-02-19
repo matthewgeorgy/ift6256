@@ -7,7 +7,7 @@ import strings  "core:strings"
 import strconv	"core:strconv"
 import slice	"core:slice"
 import fmt		"core:fmt"
-import time     "core:time"
+import win32    "core:sys/windows"
 import rl		"vendor:raylib"
 
 SCR_WIDTH 	:: 1024
@@ -75,6 +75,17 @@ main :: proc()
 	copy(TiledImage.Pixels, Image.Pixels)
 
     ///////////////////////////////////////////////////////////////////////////
+    // Timers
+
+	StartingTime, Frequency, UpdateFrame : win32.LARGE_INTEGER
+
+	win32.QueryPerformanceCounter(&StartingTime)
+	win32.QueryPerformanceFrequency(&Frequency)
+
+	UpdateFrame = StartingTime + Frequency / 2
+	TicksPerMillisecond := f32(Frequency) / 1000
+
+    ///////////////////////////////////////////////////////////////////////////
     // Render
 
     rl.SetTraceLogLevel(.NONE)
@@ -103,8 +114,6 @@ main :: proc()
 		format = .UNCOMPRESSED_R32G32B32,
 	}
 
-    SleepDuration : time.Duration = 5e8
-
 	ShuffleTiles : bool = false
 
 	for !rl.WindowShouldClose()
@@ -112,14 +121,22 @@ main :: proc()
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.BLACK)
 
+		End : win32.LARGE_INTEGER
+		win32.QueryPerformanceCounter(&End)
+
 		if rl.IsKeyPressed(.SPACE)
 		{
 			ShuffleTiles = !ShuffleTiles
 		}
 
-		if ShuffleTiles
+		if End >= UpdateFrame
 		{
-			ShuffleImage(TiledImage, Image, Tiles[:], &Series, TileWidth, TileHeight)
+			if ShuffleTiles
+			{
+				ShuffleImage(TiledImage, Image, Tiles[:], &Series, TileWidth, TileHeight)
+			}
+
+			UpdateFrame = End + Frequency / 2
 		}
 
 		rlTexture := rl.LoadTextureFromImage(rlImage)
@@ -129,8 +146,6 @@ main :: proc()
 		rl.EndDrawing()
 
 		rl.UnloadTexture(rlTexture)
-
-		time.sleep(SleepDuration)
 	}
 
 	rl.CloseWindow()
