@@ -232,9 +232,9 @@ GenerateImageTiles :: proc(Image : image, TileWidth, TileHeight : u32) -> ([dyna
 	Width, Height : u32
 
 	X, Y : u32
-	for Y = 0; Y < Image.Height - TileHeight; Y += TileHeight
+	for Y = 0; Y <= Image.Height - TileHeight; Y += TileHeight
 	{
-		for X = 0; X < Image.Width - TileWidth; X += TileWidth
+		for X = 0; X <= Image.Width - TileWidth; X += TileWidth
 		{
 			Tile := image_tile {
 				Offset = v2u{X, Y},
