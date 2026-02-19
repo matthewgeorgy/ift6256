@@ -2,7 +2,6 @@ package main
 
 import os      	"core:os"
 import flags    "core:flags"
-import log      "core:log"
 import strings  "core:strings"
 import strconv	"core:strconv"
 import slice	"core:slice"
@@ -72,7 +71,7 @@ main :: proc()
 
 	TiledImage := CreateImage(Width, Height)
 
-	copy(TiledImage.Pixels, Image.Pixels)
+	UpdateImage(TiledImage, Image, Tiles[:], &Series, TileWidth, TileHeight)
 
     ///////////////////////////////////////////////////////////////////////////
     // Timers
@@ -92,19 +91,8 @@ main :: proc()
 	rl.InitWindow(SCR_WIDTH, SCR_HEIGHT, "tiles")
 	rl.SetTargetFPS(60)
 
-	SourceRect := rl.Rectangle {
-		x = 0,
-		y = 0,
-		width = real(TiledImage.Width),
-		height = real(TiledImage.Height),
-	}
-
-	DestRect := rl.Rectangle {
-		x = 0,
-		y = 0,
-		width = SCR_WIDTH,
-		height = SCR_HEIGHT,
-	}
+	SourceRect := rl.Rectangle{0, 0, f32(TiledImage.Width), f32(TiledImage.Height)}
+	DestRect := rl.Rectangle {0, 0, SCR_WIDTH, SCR_HEIGHT}
 
 	rlImage := rl.Image {
 		data = raw_data(TiledImage.Pixels),
@@ -133,8 +121,10 @@ main :: proc()
 		{
 			if ShuffleTiles
 			{
-				ShuffleImage(TiledImage, Image, Tiles[:], &Series, TileWidth, TileHeight)
+				Shuffle(&Series, Tiles[:])
 			}
+
+			UpdateImage(TiledImage, Image, Tiles[:], &Series, TileWidth, TileHeight)
 
 			UpdateFrame = End + Frequency / 2
 		}
@@ -159,8 +149,6 @@ LoadColorData :: proc() -> [dynamic]xkcd_color
 	defer delete(File)
 
 	StringFile := string(File)
-
-	HexColorToFloatColor("#010101")
 
 	for Line in strings.split_lines_iterator(&StringFile)
 	{
@@ -278,10 +266,8 @@ GenerateImageTiles :: proc(Image : image, TileWidth, TileHeight : u32) -> ([dyna
 	return Tiles, Width, Height
 }
 
-ShuffleImage :: proc(TiledImage, BaseImage : image, Tiles : []image_tile, Series : ^random_series, TileWidth, TileHeight : u32)
+UpdateImage :: proc(TiledImage, BaseImage : image, Tiles : []image_tile, Series : ^random_series, TileWidth, TileHeight : u32)
 {
-	Shuffle(Series, Tiles[:])
-
 	BaseX, BaseY : u32
 	for Tile, TileIndex in Tiles
 	{
