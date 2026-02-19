@@ -25,7 +25,7 @@ main :: proc()
 
 	ImageFileName := os.args[1]
 
-	Series := InitializeRandomSeries(0)
+	Series := InitializeRandomSeries(GetEntropy())
 	Colors := LoadColorData()
 
 	ColorPalette : [dynamic]xkcd_color
@@ -43,16 +43,44 @@ main :: proc()
 		}
 	}
 
-	for Color in ColorPalette
-	{
-		fmt.println(Color)
-	}
-
 	Image, _ := LoadImage(ImageFileName, false)
 
 	PostprocessImage(Image, ColorPalette[:])
 
-	SaveImage(Image, "blah.png")
+	TileWidth : u32 = 256
+	TileHeight : u32 = 256
+	Tiles, Width, Height := GenerateImageTiles(Image, TileWidth, TileHeight)
+
+	Shuffle(&Series, Tiles[:])
+
+	TiledImage := CreateImage(Width, Height)
+
+	BaseX : u32 = 0
+	BaseY : u32 = 0
+	for Tile, TileIndex in Tiles
+	{
+		for TileY in 0..<Tile.Size.y
+		{
+			for TileX in 0..<Tile.Size.x
+			{
+				PixelX := TileX + Tile.Offset.x
+				PixelY := TileY + Tile.Offset.y
+
+				PixelValue := ReadPixel(Image, PixelX, PixelY)
+				
+				WritePixel(TiledImage, BaseX + TileX, BaseY + TileY, PixelValue)
+			}
+		}
+
+		BaseX += TileWidth
+		if BaseX >= TiledImage.Width
+		{
+			BaseX = 0
+			BaseY += TileHeight
+		}
+	}
+
+	SaveImage(TiledImage, "blah.png")
 }
 
 LoadColorData :: proc() -> [dynamic]xkcd_color
@@ -133,5 +161,36 @@ PostprocessImage :: proc(Image : image, ColorPalette : []xkcd_color)
 			WritePixel(Image, X, Y, ColorPalette[ClosestColorIndex].Value)
 		}
 	}
+}
+
+image_tile :: struct
+{
+	Offset : v2u,
+	Size : v2u, 
+}
+
+GenerateImageTiles :: proc(Image : image, TileWidth, TileHeight : u32) -> ([dynamic]image_tile, u32, u32)
+{
+	Tiles : [dynamic]image_tile
+	Width, Height : u32
+
+	X, Y : u32
+	for Y = 0; Y < Image.Height - TileHeight; Y += TileHeight
+	{
+		for X = 0; X < Image.Width - TileWidth; X += TileWidth
+		{
+			Tile := image_tile {
+				Offset = v2u{X, Y},
+				Size = v2u{TileWidth, TileHeight},
+			}
+
+			append(&Tiles, Tile)
+		}
+	}
+
+	Width = X
+	Height = Y
+
+	return Tiles, Width, Height
 }
 
