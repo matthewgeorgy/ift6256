@@ -6,8 +6,10 @@ import strings  "core:strings"
 import strconv	"core:strconv"
 import slice	"core:slice"
 import fmt		"core:fmt"
-
 import rl		"vendor:raylib"
+
+SCR_WIDTH 	:: 1024
+SCR_HEIGHT 	:: 1024
 
 xkcd_color :: struct
 {
@@ -73,6 +75,51 @@ main :: proc()
 	}
 
 	SaveImage(TiledImage, "blah.png")
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Render
+
+    // rl.SetTraceLogLevel(.NONE)
+	rl.InitWindow(SCR_WIDTH, SCR_HEIGHT, "tiles")
+	rl.SetTargetFPS(60)
+
+	SourceRect := rl.Rectangle {
+		x = 0,
+		y = 0,
+		width = real(TiledImage.Width),
+		height = real(TiledImage.Height),
+	}
+
+	DestRect := rl.Rectangle {
+		x = 0,
+		y = 0,
+		width = SCR_WIDTH,
+		height = SCR_HEIGHT,
+	}
+
+	for !rl.WindowShouldClose()
+	{
+		rl.BeginDrawing()
+		rl.ClearBackground(rl.BLACK)
+
+		rlImage := rl.Image {
+			data = raw_data(TiledImage.Pixels),
+			width = i32(TiledImage.Width),
+			height = i32(TiledImage.Height),
+			mipmaps = 1,
+			format = .UNCOMPRESSED_R32G32B32,
+		}
+
+		rlTexture := rl.LoadTextureFromImage(rlImage)
+
+		rl.DrawTexturePro(rlTexture, SourceRect, DestRect, v2{}, 0, rl.WHITE)
+
+		rl.EndDrawing()
+
+		rl.UnloadTexture(rlTexture)
+	}
+
+	rl.CloseWindow()
 }
 
 LoadColorData :: proc() -> [dynamic]xkcd_color
