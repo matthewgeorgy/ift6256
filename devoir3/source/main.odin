@@ -15,6 +15,12 @@ xkcd_color :: struct
 	Value : v3,
 }
 
+image_tile :: struct
+{
+	Offset : v2u,
+	Size : v2u, 
+}
+
 main :: proc()
 {
 	if len(os.args) < 2
@@ -27,46 +33,32 @@ main :: proc()
 
 	Series := InitializeRandomSeries(GetEntropy())
 	Colors := LoadColorData()
-
-	ColorPalette : [dynamic]xkcd_color
-	Indices : [dynamic]u32
-
-	// Build 16-color palette
-	for len(Indices) < 16
-	{
-		Index := RandomUInt(&Series, u32(len(Colors)))
-
-		if !slice.contains(Indices[:], Index)
-		{
-			append(&Indices, Index)
-			append(&ColorPalette, Colors[Index])
-		}
-	}
+	ColorPalette := BuildColorPalette(Colors[:], &Series)
 
 	Image, _ := LoadImage(ImageFileName, false)
-
 	PostprocessImage(Image, ColorPalette[:])
 
-	TileWidth : u32 = 256
-	TileHeight : u32 = 256
+	TileCountX : u32 = 8
+	TileCountY : u32 = 8
+	TileWidth : u32 = Image.Width / TileCountX
+	TileHeight : u32 = Image.Height / TileCountY
 	Tiles, Width, Height := GenerateImageTiles(Image, TileWidth, TileHeight)
 
 	Shuffle(&Series, Tiles[:])
 
 	TiledImage := CreateImage(Width, Height)
 
-	BaseX : u32 = 0
-	BaseY : u32 = 0
+	BaseX, BaseY : u32
 	for Tile, TileIndex in Tiles
 	{
 		for TileY in 0..<Tile.Size.y
 		{
 			for TileX in 0..<Tile.Size.x
 			{
-				PixelX := TileX + Tile.Offset.x
-				PixelY := TileY + Tile.Offset.y
+				TilePixelX := TileX + Tile.Offset.x
+				TilePixelY := TileY + Tile.Offset.y
 
-				PixelValue := ReadPixel(Image, PixelX, PixelY)
+				PixelValue := ReadPixel(Image, TilePixelX, TilePixelY)
 				
 				WritePixel(TiledImage, BaseX + TileX, BaseY + TileY, PixelValue)
 			}
@@ -137,6 +129,28 @@ HexColorToFloatColor :: proc(HexColor : string) -> v3
 	return FloatColor
 }
 
+BuildColorPalette :: proc(Colors : []xkcd_color, Series : ^random_series) -> [dynamic]xkcd_color
+{
+	ColorPalette : [dynamic]xkcd_color
+	Indices : [dynamic]u32
+
+	// Build 16-color palette
+	for len(Indices) < 16
+	{
+		Index := RandomUInt(Series, u32(len(Colors)))
+
+		if !slice.contains(Indices[:], Index)
+		{
+			append(&Indices, Index)
+			append(&ColorPalette, Colors[Index])
+		}
+	}
+
+	delete(Indices)
+
+	return ColorPalette
+}
+
 PostprocessImage :: proc(Image : image, ColorPalette : []xkcd_color)
 {
 	for Y in 0..<Image.Height
@@ -161,12 +175,6 @@ PostprocessImage :: proc(Image : image, ColorPalette : []xkcd_color)
 			WritePixel(Image, X, Y, ColorPalette[ClosestColorIndex].Value)
 		}
 	}
-}
-
-image_tile :: struct
-{
-	Offset : v2u,
-	Size : v2u, 
 }
 
 GenerateImageTiles :: proc(Image : image, TileWidth, TileHeight : u32) -> ([dynamic]image_tile, u32, u32)
