@@ -72,6 +72,8 @@ main :: proc()
 
 	TiledImage := CreateImage(Width, Height)
 
+	copy(TiledImage.Pixels, Image.Pixels)
+
     ///////////////////////////////////////////////////////////////////////////
     // Render
 
@@ -103,12 +105,22 @@ main :: proc()
 
     SleepDuration : time.Duration = 5e8
 
+	ShuffleTiles : bool = false
+
 	for !rl.WindowShouldClose()
 	{
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.BLACK)
 
-		ShuffleImage(TiledImage, Image, Tiles[:], &Series, TileWidth, TileHeight)
+		if rl.IsKeyPressed(.SPACE)
+		{
+			ShuffleTiles = !ShuffleTiles
+		}
+
+		if ShuffleTiles
+		{
+			ShuffleImage(TiledImage, Image, Tiles[:], &Series, TileWidth, TileHeight)
+		}
 
 		rlTexture := rl.LoadTextureFromImage(rlImage)
 
