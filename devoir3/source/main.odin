@@ -6,6 +6,7 @@ import strings  "core:strings"
 import strconv	"core:strconv"
 import slice	"core:slice"
 import fmt		"core:fmt"
+import time     "core:time"
 import rl		"vendor:raylib"
 
 SCR_WIDTH 	:: 1024
@@ -46,40 +47,12 @@ main :: proc()
 	TileHeight : u32 = Image.Height / TileCountY
 	Tiles, Width, Height := GenerateImageTiles(Image, TileWidth, TileHeight)
 
-	Shuffle(&Series, Tiles[:])
-
 	TiledImage := CreateImage(Width, Height)
-
-	BaseX, BaseY : u32
-	for Tile, TileIndex in Tiles
-	{
-		for TileY in 0..<Tile.Size.y
-		{
-			for TileX in 0..<Tile.Size.x
-			{
-				TilePixelX := TileX + Tile.Offset.x
-				TilePixelY := TileY + Tile.Offset.y
-
-				PixelValue := ReadPixel(Image, TilePixelX, TilePixelY)
-				
-				WritePixel(TiledImage, BaseX + TileX, BaseY + TileY, PixelValue)
-			}
-		}
-
-		BaseX += TileWidth
-		if BaseX >= TiledImage.Width
-		{
-			BaseX = 0
-			BaseY += TileHeight
-		}
-	}
-
-	SaveImage(TiledImage, "blah.png")
 
     ///////////////////////////////////////////////////////////////////////////
     // Render
 
-    // rl.SetTraceLogLevel(.NONE)
+    rl.SetTraceLogLevel(.NONE)
 	rl.InitWindow(SCR_WIDTH, SCR_HEIGHT, "tiles")
 	rl.SetTargetFPS(60)
 
@@ -97,18 +70,22 @@ main :: proc()
 		height = SCR_HEIGHT,
 	}
 
+	rlImage := rl.Image {
+		data = raw_data(TiledImage.Pixels),
+		width = i32(TiledImage.Width),
+		height = i32(TiledImage.Height),
+		mipmaps = 1,
+		format = .UNCOMPRESSED_R32G32B32,
+	}
+
+    SleepDuration : time.Duration = 1e8
+
 	for !rl.WindowShouldClose()
 	{
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.BLACK)
 
-		rlImage := rl.Image {
-			data = raw_data(TiledImage.Pixels),
-			width = i32(TiledImage.Width),
-			height = i32(TiledImage.Height),
-			mipmaps = 1,
-			format = .UNCOMPRESSED_R32G32B32,
-		}
+		ShuffleImage(TiledImage, Image, Tiles[:], &Series, TileWidth, TileHeight)
 
 		rlTexture := rl.LoadTextureFromImage(rlImage)
 
@@ -117,6 +94,8 @@ main :: proc()
 		rl.EndDrawing()
 
 		rl.UnloadTexture(rlTexture)
+
+		time.sleep(SleepDuration)
 	}
 
 	rl.CloseWindow()
@@ -247,5 +226,34 @@ GenerateImageTiles :: proc(Image : image, TileWidth, TileHeight : u32) -> ([dyna
 	Height = Y
 
 	return Tiles, Width, Height
+}
+
+ShuffleImage :: proc(TiledImage, BaseImage : image, Tiles : []image_tile, Series : ^random_series, TileWidth, TileHeight : u32)
+{
+	Shuffle(Series, Tiles[:])
+
+	BaseX, BaseY : u32
+	for Tile, TileIndex in Tiles
+	{
+		for TileY in 0..<Tile.Size.y
+		{
+			for TileX in 0..<Tile.Size.x
+			{
+				TilePixelX := TileX + Tile.Offset.x
+				TilePixelY := TileY + Tile.Offset.y
+
+				PixelValue := ReadPixel(BaseImage, TilePixelX, TilePixelY)
+				
+				WritePixel(TiledImage, BaseX + TileX, BaseY + TileY, PixelValue)
+			}
+		}
+
+		BaseX += TileWidth
+		if BaseX >= TiledImage.Width
+		{
+			BaseX = 0
+			BaseY += TileHeight
+		}
+	}
 }
 
