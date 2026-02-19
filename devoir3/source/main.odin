@@ -1,6 +1,7 @@
 package main
 
 import os      	"core:os"
+import flags    "core:flags"
 import log      "core:log"
 import strings  "core:strings"
 import strconv	"core:strconv"
@@ -24,25 +25,47 @@ image_tile :: struct
 	Size : v2u, 
 }
 
+opts :: struct
+{
+	name : string `args:"required" usage:"Input image filename"`, 
+    seed : u32 `usage:"Initial seed [default: 0, random seed each time]"`,
+	x : u32 `usage:"Number of tiles in X"`,
+	y : u32 `usage:"Number of tiles in Y"`,
+}
+
 main :: proc()
 {
-	if len(os.args) < 2
-	{
-		fmt.println("Need an image filename...!")
-		return
-	}
+    ///////////////////////////////////////////////////////////////////////////
+    // Opts
 
-	ImageFileName := os.args[1]
+	Opts : opts
 
-	Series := InitializeRandomSeries(GetEntropy())
+	flags.parse_or_exit(&Opts, os.args, .Odin)
+
+    Seed : u32 = (Opts.seed != 0) ? Opts.seed : GetEntropy()
+	TileCountX : u32 = (Opts.x != 0) ? Opts.x : 8
+	TileCountY : u32 = (Opts.y != 0) ? Opts.y : 8
+
+	ImageFileName := Opts.name
+
+	fmt.println("Seed:", Seed)
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Setup
+
+	Series := InitializeRandomSeries(Seed)
 	Colors := LoadColorData()
 	ColorPalette := BuildColorPalette(Colors[:], &Series)
 
-	Image, _ := LoadImage(ImageFileName, false)
+	Image, Success := LoadImage(ImageFileName, false)
+	if !Success
+	{
+		fmt.println("Failed to open file:", ImageFileName)
+		return
+	}
+
 	PostprocessImage(Image, ColorPalette[:])
 
-	TileCountX : u32 = 8
-	TileCountY : u32 = 8
 	TileWidth : u32 = Image.Width / TileCountX
 	TileHeight : u32 = Image.Height / TileCountY
 	Tiles, Width, Height := GenerateImageTiles(Image, TileWidth, TileHeight)
@@ -78,7 +101,7 @@ main :: proc()
 		format = .UNCOMPRESSED_R32G32B32,
 	}
 
-    SleepDuration : time.Duration = 1e8
+    SleepDuration : time.Duration = 5e8
 
 	for !rl.WindowShouldClose()
 	{
