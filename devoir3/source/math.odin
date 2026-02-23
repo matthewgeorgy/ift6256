@@ -94,7 +94,8 @@ Pow					:: math.pow
 DegsToRads			:: math.to_radians
 RadsToDegs			:: math.to_degrees
 Clamp				:: clamp
-Lerp				:: math.lerp
+Floor				:: math.floor
+Fract				:: linalg.fract
 Inverse				:: linalg.matrix4_inverse
 InverseTranspose	:: linalg.matrix4_inverse_transpose
 IsNaN				:: linalg.is_nan
@@ -109,6 +110,11 @@ MinV3 :: proc(A, B : v3) -> v3
 MaxV3 :: proc(A, B : v3) -> v3
 {
 	return v3{Max(A.x, B.x), Max(A.y, B.y), Max(A.z, B.z)}
+}
+
+Luminance :: proc(Color : v3) -> real
+{
+    return Dot(Color, v3{0.212671, 0.715160, 0.072169})
 }
 
 ///////////////////////////////////////
