@@ -15,6 +15,7 @@ opts :: struct
     seed : u32 `usage:"Initial seed [default: 0, random seed each time]"`,
     input : string `args:"required" usage:"Input image filename"`,
     output : string `usage:"Output image filename [default: out.png]"`,
+	palette : uint `usage:"Color palette size [default: 0 - original image colours]"`,
 }
 
 main :: proc()
@@ -29,6 +30,7 @@ main :: proc()
 	Seed : u32 = (Opts.seed != 0) ? Opts.seed : GetEntropy()
 	InputFileName := Opts.input
 	OutputFileName := (len(Opts.output) != 0) ? Opts.output : "out.png"
+	PaletteSize := Opts.palette
 
 	Series := InitializeRandomSeries(Seed)
 
@@ -45,15 +47,18 @@ main :: proc()
 	SCREEN_WIDTH := Min(Image.Width, 960)
 	SCREEN_HEIGHT := Min(Image.Height, 960)
 
-	XkcdColors := LoadColors()
-	Palette := ChoosePalette(&Series, XkcdColors[:])
-
-	for Color in Palette
+	if PaletteSize != 0
 	{
-		fmt.println(Color.Name, Color.Value)
-	}
+		XkcdColors := LoadColors()
+		Palette := ChoosePalette(&Series, XkcdColors[:], PaletteSize)
 
-	PreprocessImage(Image, Palette[:])
+		for Color in Palette
+		{
+			fmt.println(Color.Name, Color.Value)
+		}
+
+		PreprocessImage(Image, Palette[:])
+	}
 
 	//////////////////////////////////////////////////////////////////////////
 	// Render
@@ -86,9 +91,11 @@ main :: proc()
 
 		rl.DrawTexturePro(rlTexture, SrcRect, DstRect, 0, 0, rl.WHITE)
 
-		SortPixels(Image, Sorted, Threshold, SortPixelLeftToRight)
-
-		Threshold = Max(Threshold - 0.05, 0.01)
+		if Threshold > 0.01
+		{
+			SortPixels(Image, Sorted, Threshold, SortPixelLeftToRight)
+			Threshold -= 0.05
+		}
 
         rl.EndDrawing()
 
@@ -174,15 +181,19 @@ LoadColors :: proc() -> [dynamic]xkcd_color
 	return Colors
 }
 
-ChoosePalette :: proc(Series : ^random_series, Colors : []xkcd_color) -> [dynamic]xkcd_color
+ChoosePalette :: proc(Series : ^random_series, Colors : []xkcd_color, PaletteSize : uint) -> [dynamic]xkcd_color
 {
-	PALETTE_SIZE :: 200
 	Indices : [dynamic]u32
 	Palette : [dynamic]xkcd_color
 
-	defer delete(Indices)
+	PaletteSize := PaletteSize
+	if PaletteSize > len(Colors)
+	{
+		fmt.printf("Palette size (%u) exceeds total number of colours (%d), clamping...\n", PaletteSize, len(Colors))
+		PaletteSize = len(Colors)
+	}
 
-	for len(Indices) < PALETTE_SIZE
+	for len(Indices) < int(PaletteSize)
 	{
 		Index := RandomUInt(Series, u32(len(Colors)))
 		if !(slice.contains(Indices[:], Index))
@@ -191,6 +202,8 @@ ChoosePalette :: proc(Series : ^random_series, Colors : []xkcd_color) -> [dynami
 			append(&Palette, Colors[Index])
 		}
 	}
+
+	delete(Indices)
 
 	return Palette
 }
