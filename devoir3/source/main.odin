@@ -10,14 +10,21 @@ import flags	"core:flags"
 
 import rl 		"vendor:raylib"
 
+xkcd_color :: struct
+{
+	Name : string,
+	Value : v3,
+}
+
 opts :: struct
 {
-    seed : u32 `usage:"Initial seed [default: 0, random seed each time]"`,
-    input : string `args:"required" usage:"Input image filename"`,
-    output : string `usage:"Output image filename [default: out.png]"`,
-	palette : uint `usage:"Color palette size [default: 0 - original image colours]"`,
-	threshold : real `usage:"Minimum pixel-sorting threshold [default: 0.0]"`,
-	step : real`usage:"Threshold decrement size [default: 0.05]"`,
+    seed : u32 			`usage:"Initial seed [default: 0, random seed each time]"`,
+    input : string 		`args:"required" usage:"Input image filename"`,
+    output : string 	`usage:"Output image filename [default: out.png]"`,
+	palette : uint 		`usage:"Color palette size [default: 0 - original image colours]"`,
+	threshold : real	`usage:"Minimum pixel-sorting threshold [default: 0.0]"`,
+	step : real 		`usage:"Threshold decrement size [default: 0.05]"`,
+	verbose : bool		`usage:"Show palette colors [default: false]"`,
 }
 
 main :: proc()
@@ -38,6 +45,8 @@ main :: proc()
 
 	Series := InitializeRandomSeries(Seed)
 
+	fmt.println("Seed:", Seed)
+
 	//////////////////////////////////////////////////////////////////////////
 	// Image & colors
 
@@ -56,9 +65,12 @@ main :: proc()
 		XkcdColors := LoadColors()
 		Palette := ChoosePalette(&Series, XkcdColors[:], PaletteSize)
 
-		for Color in Palette
+		if Opts.verbose
 		{
-			fmt.println(Color.Name, Color.Value)
+			for Color in Palette
+			{
+				fmt.println(Color.Name, Color.Value)
+			}
 		}
 
 		PreprocessImage(Image, Palette[:])
@@ -145,12 +157,6 @@ SortPixels :: proc(Image, Sorted : image, Threshold : real, SortProc : proc(v3, 
 	}
 }
 
-xkcd_color :: struct
-{
-	Name : string,
-	Value : v3,
-}
-
 LoadColors :: proc() -> [dynamic]xkcd_color
 {
 	Colors : [dynamic]xkcd_color
@@ -173,8 +179,7 @@ LoadColors :: proc() -> [dynamic]xkcd_color
 
 		for I in 0..<len(NameTokens) - 1
 		{
-			Token := &NameTokens[I]
-			Token^ = strings.concatenate([]string{Token^, " "})
+			NameTokens[I] = strings.concatenate([]string{NameTokens[I], " "})
 		}
 
 		Name = strings.concatenate(NameTokens[:])
@@ -193,7 +198,7 @@ ChoosePalette :: proc(Series : ^random_series, Colors : []xkcd_color, PaletteSiz
 	PaletteSize := PaletteSize
 	if PaletteSize > len(Colors)
 	{
-		fmt.printf("Palette size (%u) exceeds total number of colours (%d), clamping...\n", PaletteSize, len(Colors))
+		fmt.printf("Palette size exceeds total number of colours (%d), clamping...\n", len(Colors))
 		PaletteSize = len(Colors)
 	}
 
@@ -239,13 +244,12 @@ PreprocessImage :: proc(Image : image, Palette : []xkcd_color)
 
 HexColorToFloatColor :: proc(HexColor : string) -> v3
 {
-	Red   := HexColor[1:3]
-	Green := HexColor[3:5]
-	Blue  := HexColor[5:7]
-
-	R, _ := strconv.parse_int(Red, 16)
-	G, _ := strconv.parse_int(Green, 16)
-	B, _ := strconv.parse_int(Blue, 16)
+	// Hex color is of the form:
+	// #RRGGBB
+	// 0123456 (byte positions)
+	R, _ := strconv.parse_int(HexColor[1:3], 16)
+	G, _ := strconv.parse_int(HexColor[3:5], 16)
+	B, _ := strconv.parse_int(HexColor[5:7], 16)
 
 	FloatColor := v3 {
 		real(R) / real(255),
