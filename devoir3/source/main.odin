@@ -16,6 +16,8 @@ opts :: struct
     input : string `args:"required" usage:"Input image filename"`,
     output : string `usage:"Output image filename [default: out.png]"`,
 	palette : uint `usage:"Color palette size [default: 0 - original image colours]"`,
+	threshold : real `usage:"Minimum pixel-sorting threshold [default: 0.0]"`,
+	step : real`usage:"Threshold decrement size [default: 0.05]"`,
 }
 
 main :: proc()
@@ -31,6 +33,8 @@ main :: proc()
 	InputFileName := Opts.input
 	OutputFileName := (len(Opts.output) != 0) ? Opts.output : "out.png"
 	PaletteSize := Opts.palette
+	MinThreshold := Opts.threshold
+	ThresholdStep : real = (Opts.step != 0) ? Opts.step : 0.05
 
 	Series := InitializeRandomSeries(Seed)
 
@@ -91,10 +95,10 @@ main :: proc()
 
 		rl.DrawTexturePro(rlTexture, SrcRect, DstRect, 0, 0, rl.WHITE)
 
-		if Threshold > 0.01
+		if Threshold > MinThreshold
 		{
 			SortPixels(Image, Sorted, Threshold, SortPixelLeftToRight)
-			Threshold -= 0.05
+			Threshold -= ThresholdStep
 		}
 
         rl.EndDrawing()
