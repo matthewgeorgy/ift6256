@@ -1,41 +1,49 @@
 
 package main
 
-import os "core:os"
-import fmt "core:fmt"
-import slice "core:slice"
-import strings "core:strings"
-import strconv "core:strconv"
-import rl "vendor:raylib"
+import os 		"core:os"
+import fmt 		"core:fmt"
+import slice 	"core:slice"
+import strings 	"core:strings"
+import strconv 	"core:strconv"
+import flags	"core:flags"
+
+import rl 		"vendor:raylib"
+
+opts :: struct
+{
+    seed : u32 `usage:"Initial seed [default: 0, random seed each time]"`,
+    input : string `args:"required" usage:"Input image filename"`,
+    output : string `usage:"Output image filename [default: out.png]"`,
+}
 
 main :: proc()
 {
-	if len(os.args) < 2
+	//////////////////////////////////////////////////////////////////////////
+	// Opts
+
+	Opts : opts
+
+	flags.parse_or_exit(&Opts, os.args, .Odin)
+
+	Seed : u32 = (Opts.seed != 0) ? Opts.seed : GetEntropy()
+	InputFileName := Opts.input
+	OutputFileName := (len(Opts.output) != 0) ? Opts.output : "out.png"
+
+	Series := InitializeRandomSeries(Seed)
+
+	//////////////////////////////////////////////////////////////////////////
+	// Image & colors
+
+	Image, ok := LoadImage(InputFileName, false)
+	if !ok
 	{
-		fmt.println("missing arg")
+		fmt.println("Failed to open image file:", InputFileName)
 		return
 	}
 
-	Image, _ := LoadImage(os.args[1], false)
-
 	SCREEN_WIDTH := Min(Image.Width, 960)
 	SCREEN_HEIGHT := Min(Image.Height, 960)
-
-	LumImage := CreateImage(Image.Width, Image.Height)
-
-	for Y in 0..<Image.Height
-	{
-		for X in 0..<Image.Width
-		{
-			Lum := Luminance(ReadPixel(Image, X, Y))
-			WritePixel(LumImage, X, Y, v3{Lum, Lum, Lum})
-		}
-	}
-
-	SaveImage(LumImage, "lum0.hdr", false)
-
-	Series := InitializeRandomSeries(GetEntropy())
-	Perm := GeneratePermutationVector(&Series)
 
 	XkcdColors := LoadColors()
 	Palette := ChoosePalette(&Series, XkcdColors[:])
@@ -87,21 +95,12 @@ main :: proc()
 		rl.UnloadTexture(rlTexture)
     }
 
-	for Y in 0..<Sorted.Height
-	{
-		for X in 0..<Sorted.Width
-		{
-			Lum := Luminance(ReadPixel(Sorted, X, Y))
-			WritePixel(LumImage, X, Y, v3{Lum, Lum, Lum})
-		}
-	}
-
-	SaveImage(LumImage, "lum1.hdr", false)
+	SaveImage(Sorted, OutputFileName, false)
 
     rl.CloseWindow()
 }
 
-SortPixels :: proc(Image, Sorted : image, BaseThreshold : real, SortProc : proc(v3, v3) -> bool)
+SortPixels :: proc(Image, Sorted : image, Threshold : real, SortProc : proc(v3, v3) -> bool)
 {
 	copy(Sorted.Pixels, Image.Pixels)
 
@@ -113,8 +112,6 @@ SortPixels :: proc(Image, Sorted : image, BaseThreshold : real, SortProc : proc(
 
 		for X < len(Row)
 		{
-			Threshold := BaseThreshold// + PerlinNoise(real(X), real(Y), Perm)
-
 			for X < len(Row) && Luminance(Row[X]) <= Threshold
 			{
 				X += 1
