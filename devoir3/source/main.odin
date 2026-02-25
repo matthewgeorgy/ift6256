@@ -80,7 +80,7 @@ main :: proc()
 	// Render
 
     rl.SetTraceLogLevel(.NONE)
-    rl.InitWindow(i32(SCREEN_WIDTH), i32(SCREEN_HEIGHT), "pxl")
+    rl.InitWindow(i32(SCREEN_WIDTH), i32(SCREEN_HEIGHT), "winds of time")
     rl.SetTargetFPS(60)
 
 	Sorted := CreateImage(Image.Width, Image.Height)
