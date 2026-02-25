@@ -93,6 +93,8 @@ main :: proc()
 		format = .UNCOMPRESSED_R32G32B32,
 	}
 
+	rlTexture := rl.LoadTextureFromImage(rlImage)
+
 	SrcRect := rl.Rectangle{0, 0, f32(Sorted.Width), f32(Sorted.Height)}
 	DstRect := rl.Rectangle{0, 0, f32(SCREEN_WIDTH), f32(SCREEN_HEIGHT)}
 
@@ -103,8 +105,6 @@ main :: proc()
         rl.BeginDrawing()
         rl.ClearBackground(rl.BLACK)
 
-		rlTexture := rl.LoadTextureFromImage(rlImage)
-
 		rl.DrawTexturePro(rlTexture, SrcRect, DstRect, 0, 0, rl.WHITE)
 
 		if Threshold > MinThreshold
@@ -113,9 +113,9 @@ main :: proc()
 			Threshold -= ThresholdStep
 		}
 
-        rl.EndDrawing()
+		rl.UpdateTexture(rlTexture, raw_data(Sorted.Pixels))
 
-		rl.UnloadTexture(rlTexture)
+        rl.EndDrawing()
     }
 
 	SaveImage(Sorted, OutputFileName, false)
